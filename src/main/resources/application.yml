@@ -1,0 +1,23 @@
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        failureRateThreshold: 50
+        slowCallRateThreshold: 100
+        slowCallDurationThreshold: 60000
+        permittedNumberOfCallsInHalfOpenState: 4
+        maxWaitDurationInHalfOpenState: 1000
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 10
+        waitDurationInOpenState: 10000
+    instances:
+      searchBlog:
+        baseConfig: default
+
+properties:
+  open_api:
+    [
+      {name: "kakao", url : "https://dapi.kakao.com/v2/search/blog", apiKey: "f4f86203522b4f1aa7764ac1ec110397"},
+      {name: "naver", url : "https://openapi.naver.com/v1/search/blog.json", clientId: "t5xcq1Yw1k3_MX5JhXvk", clientSecret: "22rKTld2fN"}
+    ]
