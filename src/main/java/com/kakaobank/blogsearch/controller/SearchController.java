@@ -9,6 +9,7 @@ import com.kakaobank.blogsearch.service.SearchService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,7 +23,7 @@ public class SearchController {
         this.searchBlogRequestValidator = searchBlogRequestValidator;
     }
 
-    @GetMapping("/searchBlog")
+    @PostMapping("/searchBlog")
     public ResponseEntity<SearchBlogResponse> searchBlog(@RequestBody SearchBlogRequest searchBlogRequest) {
         try {
             searchBlogRequestValidator.validate(searchBlogRequest);
