@@ -1,10 +1,15 @@
 package com.kakaobank.blogsearch.service;
 
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import com.kakaobank.blogsearch.domain.model.PopularKeywords;
+import com.kakaobank.blogsearch.domain.repository.PopularKeywordsRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import jakarta.transaction.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import com.kakaobank.blogsearch.config.Properties;
 import com.kakaobank.blogsearch.controller.dto.request.SearchBlogRequest;
 import com.kakaobank.blogsearch.controller.dto.response.SearchBlogResponse;
@@ -12,21 +17,27 @@ import com.kakaobank.blogsearch.controller.dto.response.SearchBlogResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service("searchService")
 public class SearchServiceImpl implements SearchService{
     private final Properties properties;
+    private final PopularKeywordsRepository popularKeywordsRepository;
 
-    public SearchServiceImpl(Properties properties) {
+    public SearchServiceImpl(Properties properties, PopularKeywordsRepository popularKeywordsRepository) {
         this.properties = properties;
+        this.popularKeywordsRepository = popularKeywordsRepository;
     }
 
-//    @CircuitBreaker(name = "searchBlog", fallbackMethod = "searchBlogFallBack")
     @Override
-    public SearchBlogResponse searchBlog(SearchBlogRequest searchBlogRequest){
-        String apiKey = Optional.ofNullable(properties.getOpen_api().get(0).get("apiKey")).orElse("").toString();
-        String apiUrl = Optional.ofNullable(properties.getOpen_api().get(0).get("url")).orElse("").toString();
+    @Cacheable(value = "kakaoCache")
+    @CircuitBreaker(name = "searchBlog", fallbackMethod = "searchBlogFallBack")
+    public SearchBlogResponse searchBlog(SearchBlogRequest searchBlogRequest) {
+        String apiKey = Optional.ofNullable(properties.getKakao().get("Authorization")).orElse("");
+        String apiUrl = Optional.ofNullable(properties.getKakao().get("url")).orElse("");
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(apiUrl).queryParam("query", searchBlogRequest.getQuery());
 
         Optional<String> sort = Optional.ofNullable(searchBlogRequest.getSort());
@@ -41,8 +52,7 @@ public class SearchServiceImpl implements SearchService{
 
         WebClient webClient = WebClient.builder()
                 .baseUrl(apiUrl)
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader("Authorization", "KakaoAK " + apiKey)
+                .defaultHeader("Authorization", apiKey)
                 .build();
 
         SearchBlogResponse searchBlogResponse = webClient.get().retrieve().bodyToMono(SearchBlogResponse.class).block();
@@ -50,10 +60,11 @@ public class SearchServiceImpl implements SearchService{
         return searchBlogResponse;
     }
 
-    private SearchBlogResponse searchBlogFallBack(SearchBlogRequest searchBlogRequest) {
-        String apiClientId = Optional.ofNullable(properties.getOpen_api().get(1).get("clientId")).orElse("").toString();
-        String apiClientSecret = Optional.ofNullable(properties.getOpen_api().get(1).get("clientSecret")).orElse("").toString();
-        String apiUrl = Optional.ofNullable(properties.getOpen_api().get(1).get("client")).orElse("").toString();
+    @Cacheable(value = "naverCache")
+    public SearchBlogResponse searchBlogFallBack(SearchBlogRequest searchBlogRequest, Throwable t) {
+        String apiClientId = Optional.ofNullable(properties.getNaver().get("X-Naver-Client-Id")).orElse("");
+        String apiClientSecret = Optional.ofNullable(properties.getNaver().get("X-Naver-Client-Secret")).orElse("");
+        String apiUrl = Optional.ofNullable(properties.getNaver().get("url")).orElse("");
 
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(apiUrl).queryParam("query", searchBlogRequest.getQuery());
 
@@ -78,4 +89,19 @@ public class SearchServiceImpl implements SearchService{
 
         return searchBlogResponse;
     }
+
+    @Transactional
+    @Override
+    public Page<PopularKeywords> getPopularKeywordsAndAddCount(String keyword ) {
+        PopularKeywords popularKeywords = popularKeywordsRepository.findPopularKeywordsByKeyword(keyword).orElse(new PopularKeywords());
+        if (popularKeywords.getKeyword() == null || popularKeywords.getKeyword().isEmpty()) {
+            popularKeywords.setKeyword(keyword);
+            popularKeywords.setSearchCount(0);
+        }
+        popularKeywords.setSearchCount(popularKeywords.getSearchCount() + 1);
+        popularKeywordsRepository.save(popularKeywords);
+        PageRequest pageRequest = PageRequest.of(0, 10);
+        return popularKeywordsRepository.findAllByOrderBySearchCountDesc(pageRequest);
+    }
+
 }

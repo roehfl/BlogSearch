@@ -8,7 +8,6 @@ import com.kakaobank.blogsearch.exceptions.SearchBlogException;
 import com.kakaobank.blogsearch.service.SearchService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,6 +27,7 @@ public class SearchController {
         try {
             searchBlogRequestValidator.validate(searchBlogRequest);
             SearchBlogResponse searchBlogResponse = searchService.searchBlog(searchBlogRequest);
+            searchBlogResponse.setPopularKeywords(searchService.getPopularKeywordsAndAddCount(searchBlogRequest.getQuery()).getContent());
             return new ResponseEntity<>(searchBlogResponse, HttpStatus.OK);
         } catch (SearchBlogException e) {
             return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);

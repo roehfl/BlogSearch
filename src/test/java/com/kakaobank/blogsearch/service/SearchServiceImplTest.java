@@ -25,7 +25,7 @@ public class SearchServiceImplTest {
         given.put("url", "https://dapi.kakao.com/v2/search/blog");
         given.put("apiKey", "f4f86203522b4f1aa7764ac1ec110397");
         //that
-        assertThat(properties.getOpen_api().get(0)).isEqualTo(given);
+        assertThat(properties.getKakao()).isEqualTo(given);
     }
 
     @Test
