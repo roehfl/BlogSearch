@@ -17,15 +17,10 @@ resilience4j:
   circuitbreaker:
     configs:
       default:
-        failureRateThreshold: 50
-        slowCallRateThreshold: 100
-        slowCallDurationThreshold: 60000
-        permittedNumberOfCallsInHalfOpenState: 4
-        maxWaitDurationInHalfOpenState: 1000
-        slidingWindowType: COUNT_BASED
-        slidingWindowSize: 10
-        minimumNumberOfCalls: 10
-        waitDurationInOpenState: 10000
+        registerHealthIndicator: true
+        minimumNumberOfCalls: 1
+        failureRateThreshold: 1
+        waitDurationInOpenState: 10s
     instances:
       searchBlog:
         baseConfig: default
@@ -34,3 +29,9 @@ properties:
   openapi:
     kakao: {url : "https://dapi.kakao.com/v2/search/blog", Authorization: "KakaoAK f4f86203522b4f1aa7764ac1ec110397"}
     naver: {url : "https://openapi.naver.com/v1/search/blog.json", X-Naver-Client-Id: "t5xcq1Yw1k3_MX5JhXvk", X-Naver-Client-Secret: "22rKTld2fN"}
+
+logging:
+  level:
+    org:
+      springframework:
+        cache: TRACE

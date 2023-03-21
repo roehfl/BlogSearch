@@ -1,8 +1,6 @@
 package com.kakaobank.blogsearch.controller.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.kakaobank.blogsearch.domain.model.PopularKeywords;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,7 +14,6 @@ public class SearchBlogResponse {
     private Meta meta;
     @JsonAlias("items")
     private List<Document> documents;
-    private List<PopularKeywords> popularKeywords;
 
     public void setTotal(Integer total) {
         if (meta == null) {

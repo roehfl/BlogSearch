@@ -3,7 +3,6 @@ package com.kakaobank.blogsearch.controller.dto.response;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @NoArgsConstructor
 @Getter
