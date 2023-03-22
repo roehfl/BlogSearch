@@ -1,42 +1,45 @@
 package com.kakaobank.blogsearch.controller.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
+import java.util.Map;
 
 @NoArgsConstructor
 @Getter
 @Setter
 public class SearchBlogResponse {
-    private Meta meta;
-    @JsonAlias("items")
+    private Integer total;
+    private Integer display;
+    private Boolean isEnd;
     private List<Document> documents;
 
-    public void setTotal(Integer total) {
-        if (meta == null) {
-            meta = new Meta();
-        }
-        meta.setTotal_count(total);
+    @JsonProperty("meta")
+    private void unpackNestedAttribute(Map<String, Object> meta) {
+        this.total = (Integer) meta.get("total_count");
+        this.isEnd = (Boolean) meta.get("is_end");
     }
 
-    public void setDisplay(Integer display) {
-        if (meta == null) {
-            meta = new Meta();
-        }
-        meta.setPageable_count(display);
+    @JsonProperty("items")
+    private void setItems(List items) {
+        this.documents = items;
     }
 
-    public void setStart(Integer start) {
-        if (meta == null) {
-            meta = new Meta();
+    @JsonProperty("start")
+    private void setDisplayValue(Integer start) {
+        this.display = start;
+        this.isEnd = false;
+    }
+
+    @JsonProperty("display")
+    private void setDisplayAndCurrentPageAndIsEnd(Integer display) {
+        if (this.display + display >= this.total) {
+            this.isEnd = true;
         }
-        meta.setIs_end(false);
-        if (meta.getTotal_count() != null && meta.getTotal_count().equals(start)) {
-            meta.setIs_end(true);
-        }
+        this.display = display;
     }
 }
 

@@ -1,8 +1,7 @@
 package com.kakaobank.blogsearch.service;
 
 import com.kakaobank.blogsearch.config.Properties;
-import com.kakaobank.blogsearch.controller.dto.request.SearchBlogRequest;
-import com.kakaobank.blogsearch.controller.dto.response.SearchBlogResponse;
+import com.kakaobank.blogsearch.controller.dto.response.GetPopularKeywordsResponse;
 import com.kakaobank.blogsearch.domain.repository.PopularKeywordsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,8 +14,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
 @SpringBootTest
 public class BlogServiceImplTest {
@@ -40,27 +37,36 @@ public class BlogServiceImplTest {
     void getPropertiesTest(){
         //given
         Map<String, String> given = new HashMap<>();
-        //when
-        given.put("name", "kakao");
         given.put("url", "https://dapi.kakao.com/v2/search/blog");
-        given.put("apiKey", "f4f86203522b4f1aa7764ac1ec110397");
+        given.put("Authorization", "KakaoAK f4f86203522b4f1aa7764ac1ec110397");
+        //when
+        Map when = properties.getKakao();
         //that
-        assertThat(properties.getKakao()).isEqualTo(given);
+        assertThat(when).isEqualTo(given);
     }
 
     @Test
-    void searchBlogFallBackTest() {
-        SearchBlogRequest searchBlogRequest = new SearchBlogRequest();
-        searchBlogRequest.setQuery("fallback");
+    void popularKeywordsTest() {
 
-        SearchBlogResponse actualResponse = blogService.searchBlog(searchBlogRequest);
+        //given
+        for (int i = 0; i < 20; i++) {
+            blogService.insertOrUpdatePopularKeywords("테스트 키워드_" + i);
+        }
 
-        SearchBlogResponse expectedResponse = new SearchBlogResponse();
+        for (int i = 0; i < 5; i++) {
+            blogService.insertOrUpdatePopularKeywords("테스트 키워드_1");
+        }
 
-        when(blogServiceImpl.searchBlogFallBack(any(), any())).thenReturn(expectedResponse);
+        for (int i = 0; i < 3; i++) {
+            blogService.insertOrUpdatePopularKeywords("테스트 키워드_2");
+        }
 
+        //when
+        GetPopularKeywordsResponse getPopularKeywordsResponse = blogService.getPopularKeywords();
 
-
-        assertThat(expectedResponse).isNotEqualTo(actualResponse);
+        //then
+        assertThat(getPopularKeywordsResponse.getPopularKeywords()).hasSize(10);
+        assertThat(getPopularKeywordsResponse.getPopularKeywords().get(0).getKeyword()).isEqualTo("테스트 키워드_1");
+        assertThat(getPopularKeywordsResponse.getPopularKeywords().get(1).getKeyword()).isEqualTo("테스트 키워드_2");
     }
 }

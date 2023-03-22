@@ -14,10 +14,14 @@ import java.time.LocalDateTime;
 @Setter
 @Getter
 @NoArgsConstructor
+@SequenceGenerator(
+        name = "POPULAR_KEYWORDS_SEQ_GENERATOR",
+        sequenceName = "POPULAR_KEYWORDS_SEQ",
+        allocationSize = 1)
 public class PopularKeywords {
     @Id
     @JsonIgnore
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "POPULAR_KEYWORDS_SEQ_GENERATOR")
     private long id;
     private String keyword;
     private long searchCount;

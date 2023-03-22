@@ -4,6 +4,7 @@ import com.kakaobank.blogsearch.controller.dto.response.GetPopularKeywordsRespon
 import com.kakaobank.blogsearch.domain.model.PopularKeywords;
 import com.kakaobank.blogsearch.domain.repository.PopularKeywordsRepository;
 import com.kakaobank.blogsearch.exceptions.GetPopularKeywordsException;
+import com.kakaobank.blogsearch.exceptions.InvalidRequestException;
 import com.kakaobank.blogsearch.exceptions.SearchBlogException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.cache.annotation.CacheEvict;
@@ -18,7 +19,7 @@ import com.kakaobank.blogsearch.config.Properties;
 import com.kakaobank.blogsearch.controller.dto.request.SearchBlogRequest;
 import com.kakaobank.blogsearch.controller.dto.response.SearchBlogResponse;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.util.DefaultUriBuilderFactory;
 import java.util.Optional;
 
 @Service("searchService")
@@ -36,25 +37,30 @@ public class BlogServiceImpl implements BlogService {
     public SearchBlogResponse searchBlog(SearchBlogRequest searchBlogRequest) {
         String apiKey = Optional.ofNullable(properties.getKakao().get("Authorization")).orElse("");
         String apiUrl = Optional.ofNullable(properties.getKakao().get("url")).orElse("");
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(apiUrl).queryParam("query", searchBlogRequest.getQuery());
+
+        DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory(apiUrl);
+        factory.setEncodingMode(DefaultUriBuilderFactory.EncodingMode.URI_COMPONENT);
 
         Optional<String> sort = Optional.ofNullable(searchBlogRequest.getSort());
         Optional<Integer> page = Optional.ofNullable(searchBlogRequest.getPage());
         Optional<Integer> size = Optional.ofNullable(searchBlogRequest.getSize());
 
-        sort.ifPresent(value -> builder.queryParam("sort", value));
-        page.ifPresent(value -> builder.queryParam("page", value));
-        size.ifPresent(value -> builder.queryParam("size", value));
-
-        apiUrl = builder.encode().toUriString();
-
         WebClient webClient = WebClient.builder()
+                .uriBuilderFactory(factory)
                 .baseUrl(apiUrl)
-                .defaultHeader("Authorization", apiKey)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
 
-        SearchBlogResponse searchBlogResponse = webClient.get().retrieve().bodyToMono(SearchBlogResponse.class).block();
+        SearchBlogResponse searchBlogResponse = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                    .queryParam("query", searchBlogRequest.getQuery())
+                    .queryParamIfPresent("sort", sort)
+                    .queryParamIfPresent("page", page)
+                    .queryParamIfPresent("size", size)
+                    .build())
+                .header("Authorization", apiKey)
+                .retrieve().bodyToMono(SearchBlogResponse.class).block();
+        searchBlogResponse.setDisplay(size.orElse(10));
 
         return searchBlogResponse;
     }
@@ -64,26 +70,39 @@ public class BlogServiceImpl implements BlogService {
         String apiClientSecret = Optional.ofNullable(properties.getNaver().get("X-Naver-Client-Secret")).orElse("");
         String apiUrl = Optional.ofNullable(properties.getNaver().get("url")).orElse("");
 
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(apiUrl).queryParam("query", searchBlogRequest.getQuery());
+        DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory(apiUrl);
+        factory.setEncodingMode(DefaultUriBuilderFactory.EncodingMode.URI_COMPONENT);
 
         Optional<String> sort = Optional.ofNullable(searchBlogRequest.getSort());
         Optional<Integer> page = Optional.ofNullable(searchBlogRequest.getPage());
         Optional<Integer> size = Optional.ofNullable(searchBlogRequest.getSize());
+        int start = 1;
 
-        sort.ifPresent(value -> builder.queryParam("sort", value.replace("accuracy", "sim").replace("recency", "date")));
-        page.ifPresent(value -> builder.queryParam("start", value));
-        size.ifPresent(value -> builder.queryParam("display", value));
+        if (page.isPresent()) {
+            start = (page.get() - 1) * size.orElse(10) + 1;
+        }
+        if (start >= 1000) {
+            throw new InvalidRequestException("Value of page times size cannot be greater or same than 1000");
+        }
 
-        apiUrl = builder.encode().toUriString();
 
         WebClient webClient = WebClient.builder()
+                .uriBuilderFactory(factory)
                 .baseUrl(apiUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader("X-Naver-Client-Id", apiClientId)
-                .defaultHeader("X-Naver-Client-Secret", apiClientSecret)
                 .build();
 
-        SearchBlogResponse searchBlogResponse = webClient.get().retrieve().bodyToMono(SearchBlogResponse.class).block();
+        Integer finalStart = start;
+        SearchBlogResponse searchBlogResponse = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .queryParam("query", searchBlogRequest.getQuery())
+                        .queryParamIfPresent("sort", sort)
+                        .queryParam("start", finalStart)
+                        .queryParamIfPresent("display", size)
+                        .build())
+                .header("X-Naver-Client-Id", apiClientId)
+                .header("X-Naver-Client-Secret", apiClientSecret)
+                .retrieve().bodyToMono(SearchBlogResponse.class).block();
 
         return searchBlogResponse;
     }
