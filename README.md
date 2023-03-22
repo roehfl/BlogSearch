@@ -4,3 +4,6 @@
  3. springdoc-openapi-starter-webmvc-ui : Swagger를 통해 api를 테스트하기 위하여 추가.
  4. resilience4j : Circuitbreaker를 구현하기 위하여 사용.
  5. assertj : assertThat 방식의 테스트 코드 작성을 위해 추가
+
+#Executable jar URL 
+  https://drive.google.com/file/d/1w9LDciVRxYpQ942JituESVlsucRw6bwj/view?usp=sharing
